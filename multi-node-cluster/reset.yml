@@ -1,0 +1,64 @@
+---
+# =====================================================================
+# reset.yml - Tear the cluster down and clean up every node so that
+# `ansible-playbook site.yml` can build a fresh cluster on top.
+#
+# This DELETES the cluster. Use with care.
+#
+# Run:  ansible-playbook reset.yml
+# =====================================================================
+
+- name: "Reset every Kubernetes node"
+  hosts: k8s_cluster
+  become: true
+  gather_facts: false
+  tasks:
+    - name: "Run kubeadm reset (ignore errors if nothing to reset)"
+      ansible.builtin.command: kubeadm reset -f
+      register: kubeadm_reset
+      failed_when: false
+      changed_when: kubeadm_reset.rc == 0
+
+    - name: "Remove CNI configuration"
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/cni/net.d
+        - /var/lib/cni
+        - /opt/cni/bin/calico
+        - /opt/cni/bin/calico-ipam
+
+    - name: "Remove kubeconfigs and kubelet state"
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /root/.kube
+        - /home/{{ ansible_user | default('ubuntu') }}/.kube
+        - /etc/kubernetes/kubeadm-config.yaml
+        - /var/lib/kubelet
+        - /var/lib/etcd
+
+    - name: "Flush iptables (best-effort; harmless if already empty)"
+      ansible.builtin.shell: |
+        set -e
+        iptables -F   || true
+        iptables -t nat -F   || true
+        iptables -t mangle -F || true
+        iptables -X   || true
+      changed_when: false
+
+    - name: "Restart containerd to drop any leftover container state"
+      ansible.builtin.systemd:
+        name: containerd
+        state: restarted
+
+- name: "Tidy up controller-side artifacts"
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: "Remove fetched admin.conf"
+      ansible.builtin.file:
+        path: "{{ playbook_dir }}/artifacts/admin.conf"
+        state: absent

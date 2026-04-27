@@ -1,0 +1,47 @@
+---
+# =====================================================================
+# group_vars/all.yml - Single source of truth for cluster settings.
+# Override any of these values per-host or per-group if you really
+# need to, but the defaults below produce a working cluster.
+# =====================================================================
+
+# ----- Kubernetes version -------------------------------------------
+# The pkgs.k8s.io repo is split per minor version; the channel string
+# below maps directly to https://pkgs.k8s.io/core:/stable:/<channel>/.
+k8s_version: "v1.32"
+
+# ----- Cluster networking -------------------------------------------
+# Pod CIDR matches Calico's manifest default. Service CIDR matches
+# kubeadm's default. Change both together if you re-IP either one.
+pod_network_cidr: "192.168.0.0/16"
+service_cidr: "10.96.0.0/12"
+
+# Friendly name shown in `kubectl config view` and similar.
+cluster_name: "multi-node-cluster"
+
+# Internal IP:port of the apiserver. Built from the master's
+# ansible_host so the cluster is HA-ready (you can later put a TCP
+# load balancer in front and re-issue certs without redoing kubeadm).
+control_plane_endpoint: "{{ hostvars[groups['masters'][0]].ansible_host }}:6443"
+
+# ----- CNI ----------------------------------------------------------
+# Calico v3.28.x is the latest stable line at the time of writing.
+# Bump this to the version you want; the manifest is a single YAML
+# applied with `kubectl apply -f`.
+calico_version: "v3.28.1"
+calico_manifest_url: "https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml"
+
+# ----- Container runtime --------------------------------------------
+# We install containerd from Docker's apt repo (newer than Ubuntu's
+# own package) and force the systemd cgroup driver, which is what
+# kubelet expects on Ubuntu 24.04.
+docker_apt_repo_url: "https://download.docker.com/linux/ubuntu"
+
+# ----- Node labels --------------------------------------------------
+# Applied by the final play after all workers have joined.
+worker_node_role_label: "node-role.kubernetes.io/worker="
+
+# ----- Operator artifacts -------------------------------------------
+# Where to drop the kubeconfig pulled from the master so you can run
+# `kubectl --kubeconfig artifacts/admin.conf` from your laptop.
+local_artifacts_dir: "{{ playbook_dir }}/artifacts"

@@ -26,7 +26,7 @@ flowchart LR
    ```
 
 3. A billing account linked to the project (required even for free-tier VMs). Do this in the Cloud Console under **Billing**.
-4. The gcloud CLI installed: <https://cloud.google.com/sdk/docs/install>.
+4. The gcloud CLI installed. Easiest from this repo: run `bash install-gcloud/install-gcloud.sh` from the repo root (see [../install-gcloud/GUIDE.md](../install-gcloud/GUIDE.md)). Official reference: <https://cloud.google.com/sdk/docs/install>.
 5. Set the active project:
 
    ```bash

@@ -75,12 +75,12 @@ The "knobs you can turn" file. Every input has a description, a sensible default
 | `name_prefix` | Prefix for every resource name | Change to label your environment |
 | `vm_count` | How many VMs to create | Scale up or down |
 | `machine_type` | VM size | Bigger for more CPU/RAM |
-| `image` | OS image | Switch OS (e.g. `ubuntu-os-cloud/ubuntu-2204-lts`) |
+| `image` | OS image | Default Ubuntu 24.04 LTS amd64; override for another OS or arm64 (`ubuntu-2404-lts-arm64` on T2A) |
 | `disk_size_gb` | Boot disk size | Larger if you need more storage |
 | `subnet_cidr` | Private IP range | Avoid clashes with other networks |
 | `assign_public_ip` | Public IP per VM | Set false if you only want internal access |
 | `ssh_source_ranges` | Who can SSH | Restrict to your IP for safety |
-| `ssh_user` | SSH username | Match the OS (e.g. `ubuntu`, `debian`) |
+| `ssh_user` | SSH username | Default `ubuntu` matches the default image; if you change `image`, use the username that image expects |
 | `ssh_public_key` | Your SSH public key | Leave empty to auto-generate |
 | `tags` | Extra network tags | For your own firewall scoping |
 | `labels` | Resource labels | Cost tracking, environment tagging |
@@ -144,7 +144,7 @@ This deletes every resource Terraform created, including the generated `*-key.pe
 - "Application Default Credentials were not found" – run `gcloud auth application-default login` (see [AUTH_GUIDE.md](AUTH_GUIDE.md)).
 - "API not enabled" / "compute.googleapis.com" – `gcloud services enable compute.googleapis.com`.
 - "Quota exceeded" – lower `vm_count` or `machine_type`, or request a quota increase in the Cloud Console.
-- "Permission denied (publickey)" on SSH – make sure `ssh_user` matches the OS (Debian: `debian`, Ubuntu: `ubuntu`) and that `ssh_source_ranges` includes your public IP.
+- "Permission denied (publickey)" on SSH – make sure `ssh_user` matches your `image` (default Ubuntu cloud image uses `ubuntu`) and that `ssh_source_ranges` includes your public IP.
 - Connection times out – check that `assign_public_ip = true` and the SSH firewall allows your source IP.
 
 ## Security checklist (recommended)

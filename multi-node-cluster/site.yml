@@ -1,0 +1,130 @@
+---
+# =====================================================================
+# site.yml - Bootstrap a multi-node Kubernetes cluster with kubeadm.
+#
+# Flow:
+#   Play 1: prepare every node (common -> containerd -> kube_packages)
+#   Play 2: initialise the control plane on the master, install Calico,
+#           and register a fresh `kubeadm join` command
+#   Play 3: join every worker to the cluster
+#   Play 4: label every worker with node-role.kubernetes.io/worker
+#
+# Run:  ansible-playbook site.yml
+# =====================================================================
+
+- name: "Sanity check the inventory before doing anything"
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: "There must be exactly one host in [masters]"
+      ansible.builtin.assert:
+        that:
+          - groups['masters'] is defined
+          - groups['masters'] | length == 1
+        fail_msg: >-
+          inventory.ini must define exactly ONE host under [masters].
+          Found: {{ groups['masters'] | default([]) | length }}.
+
+    - name: "There must be at least one host in [workers]"
+      ansible.builtin.assert:
+        that:
+          - groups['workers'] is defined
+          - groups['workers'] | length >= 1
+        fail_msg: >-
+          inventory.ini must define one or more hosts under [workers].
+
+# ---------------------------------------------------------------------
+# Play 1 - Prepare every node identically.
+# ---------------------------------------------------------------------
+- name: "Prepare every node (OS prep, containerd, kube packages)"
+  hosts: k8s_cluster
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+    - role: common
+    - role: containerd
+    - role: kube_packages
+
+# ---------------------------------------------------------------------
+# Play 2 - Bring up the control plane and install the CNI.
+# ---------------------------------------------------------------------
+- name: "Initialise the control plane and install Calico"
+  hosts: masters
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+    - role: control_plane
+
+# ---------------------------------------------------------------------
+# Play 3 - Join the workers (one at a time to be gentle on the API).
+# ---------------------------------------------------------------------
+- name: "Join every worker to the cluster"
+  hosts: workers
+  become: true
+  gather_facts: true
+  serial: 1
+  any_errors_fatal: true
+  roles:
+    - role: worker
+
+# ---------------------------------------------------------------------
+# Play 4 - Label workers and show the final cluster status.
+# ---------------------------------------------------------------------
+- name: "Label workers and report cluster status"
+  hosts: masters
+  become: true
+  gather_facts: false
+  tasks:
+    - name: "Label each worker node with node-role.kubernetes.io/worker"
+      ansible.builtin.command: >-
+        kubectl --kubeconfig /etc/kubernetes/admin.conf
+        label node {{ hostvars[item].inventory_hostname }}
+        {{ worker_node_role_label }} --overwrite
+      loop: "{{ groups['workers'] }}"
+      changed_when: false
+
+    - name: "Wait until every node reports Ready (up to 5 minutes)"
+      ansible.builtin.shell: |
+        set -o pipefail
+        kubectl --kubeconfig /etc/kubernetes/admin.conf get nodes \
+          --no-headers | awk '{print $2}' | grep -vxq Ready && exit 1 || exit 0
+      args:
+        executable: /bin/bash
+      register: nodes_ready
+      retries: 30
+      delay: 10
+      until: nodes_ready.rc == 0
+      changed_when: false
+
+    - name: "Show nodes"
+      ansible.builtin.command: >-
+        kubectl --kubeconfig /etc/kubernetes/admin.conf get nodes -o wide
+      register: get_nodes
+      changed_when: false
+
+    - name: "Show pods (all namespaces)"
+      ansible.builtin.command: >-
+        kubectl --kubeconfig /etc/kubernetes/admin.conf get pods -A
+      register: get_pods
+      changed_when: false
+
+    - name: "Cluster summary"
+      ansible.builtin.debug:
+        msg: |-
+          ========================================================
+            Kubernetes {{ k8s_version }} cluster is ready.
+
+            Master:  {{ groups['masters'][0] }} ({{ hostvars[groups['masters'][0]].ansible_host }})
+            Workers: {{ groups['workers'] | join(', ') }}
+
+            kubectl from this controller machine:
+              kubectl --kubeconfig artifacts/admin.conf get nodes
+
+          --- nodes ---
+          {{ get_nodes.stdout }}
+
+          --- pods ---
+          {{ get_pods.stdout }}
+          ========================================================

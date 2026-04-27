@@ -11,8 +11,11 @@ Simple Terraform setup that creates a VPC, a subnet, basic firewall rules, and a
 - `.gitignore` – excludes state, secrets, generated keys, and tfvars
 - `USER_GUIDE.md` – beginner-friendly walkthrough of the whole project
 - `AUTH_GUIDE.md` – step-by-step GCP authentication and IAM setup
+- `../install-gcloud/` – optional script to install the `gcloud` CLI first
 
 ## Quick start
+
+0. Install the gcloud CLI if you do not have it yet (see [../install-gcloud/GUIDE.md](../install-gcloud/GUIDE.md), or run `bash ../install-gcloud/install-gcloud.sh` from this directory).
 
 1. Set up GCP auth (see [AUTH_GUIDE.md](AUTH_GUIDE.md)):
 
@@ -51,7 +54,7 @@ Simple Terraform setup that creates a VPC, a subnet, basic firewall rules, and a
 ## Key variables
 
 - `vm_count` – number of VMs to create (all in the same VPC/subnet)
-- `machine_type`, `image`, `disk_size_gb` – VM size and OS
+- `machine_type`, `image`, `disk_size_gb` – VM size and OS (default image is Ubuntu 24.04 LTS amd64 on GCP)
 - `subnet_cidr` – internal IP range shared by all VMs
 - `assign_public_ip` – whether each VM gets an external IP
 - `ssh_user` / `ssh_public_key` – SSH user and (optional) key

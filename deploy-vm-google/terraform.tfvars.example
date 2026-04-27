@@ -4,7 +4,7 @@ zone         = "us-central1-a"
 name_prefix  = "demo"
 vm_count     = 3
 machine_type = "e2-medium"
-image        = "debian-cloud/debian-12"
+image        = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
 disk_size_gb = 20
 subnet_cidr  = "10.10.0.0/24"
 

@@ -1,0 +1,64 @@
+---
+# =====================================================================
+# roles/kube_packages - Install kubeadm/kubelet/kubectl from the
+# official pkgs.k8s.io repo for the configured minor version, and
+# `apt-mark hold` them so a stray apt upgrade never breaks the cluster.
+# =====================================================================
+
+- name: "Ensure /etc/apt/keyrings exists"
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: "Add the Kubernetes apt GPG key for {{ k8s_version }}"
+  ansible.builtin.shell: |
+    set -e
+    curl -fsSL "https://pkgs.k8s.io/core:/stable:/{{ k8s_version }}/deb/Release.key" \
+      | gpg --dearmor --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    chmod a+r /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+  args:
+    executable: /bin/bash
+  changed_when: true
+
+- name: "Add the Kubernetes apt repository"
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/kubernetes.list
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/{{ k8s_version }}/deb/ /
+  register: k8s_repo
+
+- name: "Refresh apt cache after repo change"
+  ansible.builtin.apt:
+    update_cache: true
+  when: k8s_repo.changed
+
+- name: "Install kubelet, kubeadm, and kubectl"
+  ansible.builtin.apt:
+    name:
+      - kubelet
+      - kubeadm
+      - kubectl
+    state: present
+    update_cache: true
+    cache_valid_time: 600
+
+- name: "Hold the kube packages so they aren't upgraded by accident"
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop:
+    - kubelet
+    - kubeadm
+    - kubectl
+
+- name: "Enable and start kubelet (it will crash-loop until kubeadm runs)"
+  ansible.builtin.systemd:
+    name: kubelet
+    enabled: true
+    state: started

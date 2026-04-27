@@ -60,9 +60,9 @@ variable "machine_type" {
 }
 
 variable "image" {
-  description = "Boot image for the VMs."
+  description = "Boot image for the VMs. Default is Ubuntu 24.04 LTS (amd64). For Arm (e.g. t2a-*), use ubuntu-os-cloud/ubuntu-2404-lts-arm64."
   type        = string
-  default     = "debian-cloud/debian-12"
+  default     = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
 }
 
 variable "disk_size_gb" {

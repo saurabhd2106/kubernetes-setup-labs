@@ -1,0 +1,50 @@
+{# ===================================================================
+   kubeadm-config.yaml.j2
+
+   A declarative kubeadm configuration. Using a config file (instead
+   of a long string of CLI flags) is the recommended best practice -
+   it's reviewable, diffable, and unambiguous.
+
+   Document 1: InitConfiguration       - bootstrap-time settings
+   Document 2: ClusterConfiguration    - cluster-wide settings
+   Document 3: KubeletConfiguration    - kubelet defaults (cgroups)
+   Document 4: KubeProxyConfiguration  - kube-proxy mode
+=================================================================== #}
+---
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: {{ ansible_host }}
+  bindPort: 6443
+nodeRegistration:
+  name: {{ inventory_hostname }}
+  criSocket: unix:///run/containerd/containerd.sock
+  kubeletExtraArgs:
+    - name: node-ip
+      value: {{ ansible_host }}
+---
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: ClusterConfiguration
+kubernetesVersion: stable-{{ k8s_version | regex_replace('^v', '') }}
+clusterName: {{ cluster_name }}
+controlPlaneEndpoint: {{ control_plane_endpoint }}
+networking:
+  podSubnet: {{ pod_network_cidr }}
+  serviceSubnet: {{ service_cidr }}
+apiServer:
+  certSANs:
+    - {{ ansible_host }}
+    - {{ inventory_hostname }}
+    - 127.0.0.1
+    - kubernetes
+    - kubernetes.default
+    - kubernetes.default.svc
+    - kubernetes.default.svc.cluster.local
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+cgroupDriver: systemd
+---
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+mode: iptables

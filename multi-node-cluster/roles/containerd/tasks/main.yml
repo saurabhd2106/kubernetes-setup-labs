@@ -1,0 +1,73 @@
+---
+# =====================================================================
+# roles/containerd - Install containerd from Docker's apt repo and
+# force the systemd cgroup driver (which kubelet expects).
+# =====================================================================
+
+- name: "Ensure /etc/apt/keyrings exists"
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: "Add Docker apt GPG key"
+  ansible.builtin.shell: |
+    set -e
+    curl -fsSL {{ docker_apt_repo_url }}/gpg \
+      | gpg --dearmor --yes -o /etc/apt/keyrings/docker.gpg
+    chmod a+r /etc/apt/keyrings/docker.gpg
+  args:
+    creates: /etc/apt/keyrings/docker.gpg
+
+- name: "Add Docker apt repository (for containerd.io)"
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/docker.list
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      deb [arch={{ ansible_architecture | replace('x86_64', 'amd64') | replace('aarch64', 'arm64') }} signed-by=/etc/apt/keyrings/docker.gpg] {{ docker_apt_repo_url }} {{ ansible_distribution_release }} stable
+  register: docker_repo
+
+- name: "Refresh apt cache after repo change"
+  ansible.builtin.apt:
+    update_cache: true
+  when: docker_repo.changed
+
+- name: "Install containerd.io"
+  ansible.builtin.apt:
+    name: containerd.io
+    state: present
+    update_cache: true
+    cache_valid_time: 600
+
+- name: "Ensure /etc/containerd exists"
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: "Generate the default containerd config"
+  ansible.builtin.command: containerd config default
+  register: containerd_default_config
+  changed_when: false
+  check_mode: false
+
+- name: "Write /etc/containerd/config.toml with SystemdCgroup = true"
+  ansible.builtin.copy:
+    dest: /etc/containerd/config.toml
+    owner: root
+    group: root
+    mode: '0644'
+    content: "{{ containerd_default_config.stdout | regex_replace('SystemdCgroup = false', 'SystemdCgroup = true') }}"
+  notify: "Restart containerd"
+
+- name: "Enable and start containerd"
+  ansible.builtin.systemd:
+    name: containerd
+    enabled: true
+    state: started
