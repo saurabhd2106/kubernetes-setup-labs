@@ -15,6 +15,9 @@
 set -euo pipefail
 
 readonly GCLOUD_HOME="${HOME}/google-cloud-sdk"
+# Official installer often uses $HOME/google-cloud-sdk as the *parent* dir and
+# extracts the SDK into $HOME/google-cloud-sdk/google-cloud-sdk/ (nested).
+readonly GCLOUD_SDK_NESTED="${GCLOUD_HOME}/google-cloud-sdk"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -22,6 +25,33 @@ readonly GCLOUD_HOME="${HOME}/google-cloud-sdk"
 log() { printf '\033[1;34m[%s]\033[0m %s\n' "$(date +%H:%M:%S)" "$*"; }
 warn() { printf '\033[1;33m[WARN]\033[0m %s\n' "$*" >&2; }
 die() { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2; exit 1; }
+
+# Add gcloud to PATH for this shell (flat or nested install layout).
+activate_gcloud_path() {
+  if command -v gcloud >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if [[ -x "${GCLOUD_SDK_NESTED}/bin/gcloud" ]]; then
+    export PATH="${GCLOUD_SDK_NESTED}/bin:${PATH}"
+    if [[ -f "${GCLOUD_SDK_NESTED}/path.bash.inc" ]]; then
+      # shellcheck disable=SC1091
+      source "${GCLOUD_SDK_NESTED}/path.bash.inc"
+    fi
+    return 0
+  fi
+
+  if [[ -x "${GCLOUD_HOME}/bin/gcloud" ]]; then
+    export PATH="${GCLOUD_HOME}/bin:${PATH}"
+    if [[ -f "${GCLOUD_HOME}/path.bash.inc" ]]; then
+      # shellcheck disable=SC1091
+      source "${GCLOUD_HOME}/path.bash.inc"
+    fi
+    return 0
+  fi
+
+  return 1
+}
 
 # ---------------------------------------------------------------------------
 # Preflight
@@ -35,6 +65,12 @@ preflight() {
 
   if ! command -v curl >/dev/null 2>&1; then
     die "curl is required but not found. Install curl and re-run."
+  fi
+
+  # SDK may be on disk (nested layout) but not on PATH yet — fix for this shell
+  # so a re-run after a partial install still verifies cleanly.
+  if ! command -v gcloud >/dev/null 2>&1; then
+    activate_gcloud_path || true
   fi
 
   if command -v gcloud >/dev/null 2>&1; then
@@ -67,14 +103,7 @@ install_via_google_installer() {
     die "Google Cloud SDK installer failed. See https://cloud.google.com/sdk/docs/install"
   fi
 
-  if [[ -d "${GCLOUD_HOME}/bin" ]]; then
-    export PATH="${GCLOUD_HOME}/bin:${PATH}"
-  fi
-
-  if [[ -f "${GCLOUD_HOME}/path.bash.inc" ]]; then
-    # shellcheck disable=SC1091
-    source "${GCLOUD_HOME}/path.bash.inc"
-  fi
+  activate_gcloud_path || true
 }
 
 # ---------------------------------------------------------------------------
@@ -83,8 +112,10 @@ install_via_google_installer() {
 verify() {
   log "Verifying installation"
 
+  activate_gcloud_path || true
+
   if ! command -v gcloud >/dev/null 2>&1; then
-    die "gcloud not found on PATH after install. Add this to your shell profile and open a new terminal:\n  source \"${GCLOUD_HOME}/path.bash.inc\"   # bash\n  source \"${GCLOUD_HOME}/path.zsh.inc\"   # zsh (if present)"
+    die "gcloud not found on PATH after install. The installer may use a nested folder. Add one of these to your shell profile (use the path that exists on your machine), then open a new terminal:\n  # Nested layout (common on Linux):\n  source \"${GCLOUD_SDK_NESTED}/path.bash.inc\"\n  # Flat layout:\n  source \"${GCLOUD_HOME}/path.bash.inc\"\n  # zsh: try path.zsh.inc under the same directory as path.bash.inc"
   fi
 
   gcloud --version | head -5

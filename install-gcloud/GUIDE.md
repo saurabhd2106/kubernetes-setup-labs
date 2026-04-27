@@ -13,7 +13,7 @@ This folder installs the **Google Cloud CLI** (`gcloud`), which you need before 
 2. If `gcloud` is already installed, it prints the version and **exits** (nothing is changed).
 3. Otherwise:
    - **macOS with Homebrew**: runs `brew install --cask google-cloud-sdk`.
-   - **macOS without Homebrew**, **Linux**, or other Unix: runs Google’s official **non-interactive** installer, which installs into `~/google-cloud-sdk` by default.
+   - **macOS without Homebrew**, **Linux**, or other Unix: runs Google’s official **non-interactive** installer. Files usually land under `~/google-cloud-sdk/`; on many systems the real SDK is nested as `~/google-cloud-sdk/google-cloud-sdk/` (the script detects both and adds `gcloud` to `PATH` for verification).
 4. Runs `gcloud --version` to confirm the install worked.
 
 You do **not** need `sudo` for the curl-based install (it goes under your home directory). Homebrew itself may ask for your password the first time you use it.
@@ -36,16 +36,30 @@ bash install-gcloud.sh
 ## After installation
 
 1. **Open a new terminal window** (or reload your shell config) so `PATH` picks up `gcloud`.
-2. If `gcloud` is still “command not found”, add Google’s path snippets to your shell profile:
+2. If `gcloud` is still “command not found”, add Google’s path snippets to your shell profile. **Check which folder exists** — the installer often prints paths like `.../google-cloud-sdk/google-cloud-sdk/path.bash.inc` (nested). Use the same directory for both `path` and `completion` lines.
 
-   **bash** (`~/.bashrc` or `~/.bash_profile`):
+   **Nested layout** (common after the curl installer on Linux) — **bash**:
+
+   ```bash
+   source "$HOME/google-cloud-sdk/google-cloud-sdk/path.bash.inc"
+   source "$HOME/google-cloud-sdk/google-cloud-sdk/completion.bash.inc"
+   ```
+
+   **Nested layout** — **zsh**:
+
+   ```bash
+   source "$HOME/google-cloud-sdk/google-cloud-sdk/path.zsh.inc"
+   source "$HOME/google-cloud-sdk/google-cloud-sdk/completion.zsh.inc"
+   ```
+
+   **Flat layout** (if those files are directly under `~/google-cloud-sdk/`) — **bash**:
 
    ```bash
    source "$HOME/google-cloud-sdk/path.bash.inc"
    source "$HOME/google-cloud-sdk/completion.bash.inc"
    ```
 
-   **zsh** (`~/.zshrc`):
+   **Flat layout** — **zsh**:
 
    ```bash
    source "$HOME/google-cloud-sdk/path.zsh.inc"
@@ -83,7 +97,7 @@ This shell script is for macOS and Linux. On Windows, use one of:
 | `curl: command not found` | Install `curl` with your OS package manager, then re-run the script. |
 | Homebrew install fails | Run `brew update`, then `brew install --cask google-cloud-sdk` manually. |
 | Curl installer fails (firewall/proxy) | Use a network that allows `https://sdk.cloud.google.com` and `https://dl.google.com`, or install via apt (Linux) / brew (macOS). |
-| `gcloud` not found after success | Add the `source ... path.*.inc` lines above to your shell profile, then open a new terminal. |
+| `gcloud` not found after success | Prefer the **nested** `source` lines (`.../google-cloud-sdk/google-cloud-sdk/path.bash.inc`) if that path exists on disk; otherwise use the flat paths. |
 | Script says gcloud is already installed | You are done; use `gcloud components update` to upgrade components. |
 
 ## Next steps
