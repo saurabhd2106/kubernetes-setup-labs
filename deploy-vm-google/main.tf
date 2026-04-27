@@ -6,6 +6,14 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 5.0"
     }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.5"
+    }
   }
 }
 
@@ -13,6 +21,27 @@ provider "google" {
   project = var.project_id
   region  = var.region
   zone    = var.zone
+}
+
+locals {
+  generate_key   = var.ssh_public_key == ""
+  ssh_user       = var.ssh_user != "" ? var.ssh_user : "ubuntu"
+  ssh_public_key = local.generate_key ? tls_private_key.ssh[0].public_key_openssh : var.ssh_public_key
+  ssh_tag        = "${var.name_prefix}-ssh"
+  vm_tags        = distinct(concat(var.tags, [local.ssh_tag]))
+}
+
+resource "tls_private_key" "ssh" {
+  count     = local.generate_key ? 1 : 0
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+resource "local_sensitive_file" "ssh_private_key" {
+  count           = local.generate_key ? 1 : 0
+  filename        = "${path.module}/${var.name_prefix}-key.pem"
+  content         = tls_private_key.ssh[0].private_key_pem
+  file_permission = "0600"
 }
 
 resource "google_compute_network" "vpc" {
@@ -47,8 +76,9 @@ resource "google_compute_firewall" "internal" {
 }
 
 resource "google_compute_firewall" "ssh" {
-  name    = "${var.name_prefix}-allow-ssh"
-  network = google_compute_network.vpc.name
+  name        = "${var.name_prefix}-allow-ssh"
+  network     = google_compute_network.vpc.name
+  target_tags = [local.ssh_tag]
 
   allow {
     protocol = "tcp"
@@ -82,8 +112,16 @@ resource "google_compute_instance" "vm" {
   }
 
   metadata = {
-    ssh-keys = var.ssh_user != "" && var.ssh_public_key != "" ? "${var.ssh_user}:${var.ssh_public_key}" : null
+    ssh-keys               = "${local.ssh_user}:${local.ssh_public_key}"
+    block-project-ssh-keys = "TRUE"
   }
 
-  tags = var.tags
+  shielded_instance_config {
+    enable_secure_boot          = true
+    enable_vtpm                 = true
+    enable_integrity_monitoring = true
+  }
+
+  labels = var.labels
+  tags   = local.vm_tags
 }
