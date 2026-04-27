@@ -36,7 +36,15 @@ bash install-gcloud.sh
 ## After installation
 
 1. **Open a new terminal window** (or reload your shell config) so `PATH` picks up `gcloud`.
-2. If `gcloud` is still “command not found”, add Google’s path snippets to your shell profile. **Check which folder exists** — the installer often prints paths like `.../google-cloud-sdk/google-cloud-sdk/path.bash.inc` (nested). Use the same directory for both `path` and `completion` lines.
+2. **Easy way:** run the helper script in this directory:
+
+   ```bash
+   bash install-gcloud/setup-gcloud-path.sh
+   ```
+
+   It auto-detects the SDK directory (nested or flat), updates your `~/.bashrc` (and `~/.zshrc` if you use zsh) with the right `source ...` lines, keeps timestamped backups, and is safe to re-run.
+
+3. **Manual way:** if you would rather edit the file yourself, add Google's path snippets to your shell profile. **Check which folder exists** — the installer often prints paths like `.../google-cloud-sdk/google-cloud-sdk/path.bash.inc` (nested). Use the same directory for both `path` and `completion` lines.
 
    **Nested layout** (common after the curl installer on Linux) — **bash**:
 
