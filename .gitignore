@@ -1,0 +1,34 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# GCP credentials (do not commit keys)
+service-account*.json
+*-credentials.json
+gcp-key*.json
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs / temp
+*.log
+tmp/

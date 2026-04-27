@@ -1,0 +1,17 @@
+project_id   = "my-gcp-project"
+region       = "us-central1"
+zone         = "us-central1-a"
+name_prefix  = "demo"
+vm_count     = 3
+machine_type = "e2-medium"
+image        = "debian-cloud/debian-12"
+disk_size_gb = 20
+subnet_cidr  = "10.10.0.0/24"
+
+assign_public_ip  = true
+ssh_source_ranges = ["0.0.0.0/0"]
+
+# ssh_user       = "ubuntu"
+# ssh_public_key = "ssh-rsa AAAA... user@host"
+
+tags = ["demo"]
