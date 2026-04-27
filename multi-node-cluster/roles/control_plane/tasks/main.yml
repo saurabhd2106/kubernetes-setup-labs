@@ -155,7 +155,7 @@
   ansible.builtin.replace:
     path: "{{ local_artifacts_dir }}/admin.conf"
     regexp: 'server: https://[^:]+:6443'
-    replace: "server: https://{{ ansible_host }}:6443"
+    replace: "server: https://{{ ansible_ssh_host | default(ansible_host) }}:6443"
   delegate_to: localhost
   become: false
   run_once: true

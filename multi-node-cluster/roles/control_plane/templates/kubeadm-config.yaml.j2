@@ -34,6 +34,9 @@ networking:
 apiServer:
   certSANs:
     - {{ ansible_host }}
+{% if ansible_ssh_host is defined and ansible_ssh_host and ansible_ssh_host != ansible_host %}
+    - {{ ansible_ssh_host }}
+{% endif %}
     - {{ inventory_hostname }}
     - 127.0.0.1
     - kubernetes

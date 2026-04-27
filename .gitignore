@@ -36,3 +36,4 @@ tmp/
 # Ansible multi-node (real inventory and pulled kubeconfig)
 inventory.ini
 multi-node-cluster/artifacts/
+**/.ansible_facts_cache/
