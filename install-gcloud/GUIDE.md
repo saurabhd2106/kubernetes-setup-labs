@@ -100,6 +100,40 @@ This shell script is for macOS and Linux. On Windows, use one of:
 | `gcloud` not found after success | Prefer the **nested** `source` lines (`.../google-cloud-sdk/google-cloud-sdk/path.bash.inc`) if that path exists on disk; otherwise use the flat paths. |
 | Script says gcloud is already installed | You are done; use `gcloud components update` to upgrade components. |
 
+## Uninstall
+
+The companion script [`uninstall-gcloud.sh`](uninstall-gcloud.sh) removes the SDK for **the user that runs it**. It is per-user by design — if you installed as `root`, run the uninstall as `root` (e.g. `sudo -i`); if you installed as `student`, run it as `student`.
+
+```bash
+# interactive (asks to confirm)
+bash install-gcloud/uninstall-gcloud.sh
+
+# non-interactive
+bash install-gcloud/uninstall-gcloud.sh --yes
+
+# remove SDK + profile lines, but keep ~/.config/gcloud (auth, ADC, configs)
+bash install-gcloud/uninstall-gcloud.sh --keep-config
+```
+
+What it does:
+
+- Removes `$HOME/google-cloud-sdk` (covers both flat and nested layouts).
+- On macOS, runs `brew uninstall --cask google-cloud-sdk` if the cask is installed.
+- Removes `source ".../google-cloud-sdk/(path|completion).(bash|zsh).inc"` lines from `~/.bashrc`, `~/.bash_profile`, `~/.profile`, `~/.zshrc`, `~/.zprofile`. A timestamped backup of each edited file is kept as `<file>.bak.gcloud-uninstall.<timestamp>`.
+- Removes `$HOME/.config/gcloud` by default (skip with `--keep-config`).
+
+What it does **not** do (intentionally):
+
+- It does not remove an apt-installed package. For that:
+
+  ```bash
+  sudo apt-get remove --purge google-cloud-cli
+  ```
+
+- It does not touch other users' home directories or system paths.
+
+If `gcloud` is still on `PATH` after uninstall, the script prints `which -a gcloud` so you can see which copy remains (typically an apt package or another user's install).
+
 ## Next steps
 
 - [../deploy-vm-google/AUTH_GUIDE.md](../deploy-vm-google/AUTH_GUIDE.md) — log in and grant IAM roles for Terraform.  
