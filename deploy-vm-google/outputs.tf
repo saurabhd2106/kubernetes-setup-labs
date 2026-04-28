@@ -1,3 +1,23 @@
+output "project_id" {
+  description = "GCP project ID."
+  value       = var.project_id
+}
+
+output "zone" {
+  description = "Zone used for VMs."
+  value       = var.zone
+}
+
+output "node_ssh_tag" {
+  description = "Network tag on cluster VMs (use as node-tags in gce.conf for CCM)."
+  value       = local.ssh_tag
+}
+
+output "kubernetes_node_service_account_email" {
+  description = "Dedicated node service account email when attach_kubernetes_service_account is true."
+  value       = length(google_service_account.k8s_nodes) > 0 ? google_service_account.k8s_nodes[0].email : null
+}
+
 output "vpc_name" {
   description = "Name of the VPC network."
   value       = google_compute_network.vpc.name

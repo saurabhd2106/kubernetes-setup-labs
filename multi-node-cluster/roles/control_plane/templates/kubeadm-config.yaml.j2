@@ -22,6 +22,10 @@ nodeRegistration:
   kubeletExtraArgs:
     - name: node-ip
       value: {{ ansible_host }}
+{% if enable_gcp_cloud_controller | default(false) | bool %}
+    - name: cloud-provider
+      value: external
+{% endif %}
 ---
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration

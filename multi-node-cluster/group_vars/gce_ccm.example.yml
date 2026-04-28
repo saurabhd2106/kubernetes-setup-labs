@@ -1,0 +1,10 @@
+# Example GCP CCM overlay — copy values into group_vars/k8s_cluster.yml (do not
+# rename this file to *.yml unless you intend Ansible to load it as-is).
+enable_gcp_cloud_controller: true
+gcp_project_id: "your-gcp-project-id"
+gcp_network_name: "demo-vpc"
+gcp_subnetwork_name: "demo-subnet"
+gcp_zone: "us-central1-a"
+gcp_node_ssh_tag: "demo-ssh"
+# Optional image pin:
+# gcp_ccm_image: "registry.k8s.io/cloud-provider-gcp/cloud-controller-manager:v33.1.1"

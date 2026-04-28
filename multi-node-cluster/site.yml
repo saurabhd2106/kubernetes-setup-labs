@@ -5,6 +5,7 @@
 # Flow:
 #   Play 1: prepare every node (common -> containerd -> kube_packages)
 #   Play 2: initialise the control plane on the master, install Calico,
+#           optionally deploy GCP CCM (when enable_gcp_cloud_controller),
 #           and register a fresh `kubeadm join` command
 #   Play 3: join every worker to the cluster
 #   Play 4: label every worker with node-role.kubernetes.io/worker
@@ -56,6 +57,8 @@
   any_errors_fatal: true
   roles:
     - role: control_plane
+    - role: gcp_ccm
+      when: enable_gcp_cloud_controller | default(false) | bool
 
 # ---------------------------------------------------------------------
 # Play 3 - Join the workers (one at a time to be gentle on the API).

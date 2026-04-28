@@ -11,7 +11,7 @@
     path: /etc/kubernetes/kubelet.conf
   register: kubelet_conf
 
-- name: "Pin kubelet's --node-ip to the VPC internal IP"
+- name: "Pin kubelet's --node-ip to the VPC internal IP (non-GCP path)"
   ansible.builtin.copy:
     dest: /etc/default/kubelet
     owner: root
@@ -19,7 +19,9 @@
     mode: '0644'
     content: |
       KUBELET_EXTRA_ARGS=--node-ip={{ ansible_host }}
-  when: not kubelet_conf.stat.exists
+  when:
+    - not kubelet_conf.stat.exists
+    - not (enable_gcp_cloud_controller | default(false) | bool)
 
 - name: "Pull the master's join command into a local fact"
   ansible.builtin.set_fact:
@@ -40,11 +42,45 @@
         sudo kubeadm token create --print-join-command
   when: not kubelet_conf.stat.exists
 
-- name: "Join the cluster as a worker"
+- name: "Structured join facts must exist when GCP CCM is enabled"
+  ansible.builtin.assert:
+    that:
+      - hostvars[groups['masters'][0]].kubeadm_join_api_server is defined
+      - hostvars[groups['masters'][0]].kubeadm_join_token is defined
+      - hostvars[groups['masters'][0]].kubeadm_join_ca_hash is defined
+    fail_msg: >-
+      enable_gcp_cloud_controller is true but structured join facts are missing.
+      Ensure the control plane play parsed the kubeadm join output successfully.
+  when:
+    - not kubelet_conf.stat.exists
+    - enable_gcp_cloud_controller | default(false) | bool
+
+- name: "Render kubeadm join config for GCP CCM"
+  ansible.builtin.template:
+    src: kubeadm-join-config.yaml.j2
+    dest: /root/kubeadm-join-config.yaml
+    owner: root
+    group: root
+    mode: '0600'
+  when:
+    - not kubelet_conf.stat.exists
+    - enable_gcp_cloud_controller | default(false) | bool
+
+- name: "Join the cluster as a worker (GCP CCM join config)"
+  ansible.builtin.command: kubeadm join --config /root/kubeadm-join-config.yaml
+  when:
+    - not kubelet_conf.stat.exists
+    - enable_gcp_cloud_controller | default(false) | bool
+  register: kubeadm_join
+  changed_when: true
+
+- name: "Join the cluster as a worker (token join)"
   ansible.builtin.command: >-
     {{ join_command_from_master }}
     --node-name {{ inventory_hostname }}
-  when: not kubelet_conf.stat.exists
+  when:
+    - not kubelet_conf.stat.exists
+    - not (enable_gcp_cloud_controller | default(false) | bool)
   register: kubeadm_join
   changed_when: true
 

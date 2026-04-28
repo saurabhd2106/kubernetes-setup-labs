@@ -434,3 +434,73 @@ node.
   them).
 - **Idempotent** — safe to run more than once; the second run does
   nothing if everything's already correct.
+
+---
+
+## 18. Google Cloud Load Balancers (GCE only)
+
+This stack can run the **GCP Cloud Controller Manager** (out-of-tree, from
+`kubernetes/cloud-provider-gcp`) so a `Service` with `type: LoadBalancer` gets
+a real **Google Cloud Network Load Balancer** and an `EXTERNAL-IP` (not
+`<pending>`). It only works when your nodes are **Google Compute Engine** VMs
+in the same project, for example from the sibling `deploy-vm-google` module.
+
+### 18.1. What the playbooks do
+
+- `group_vars/k8s_cluster.yml` — set `enable_gcp_cloud_controller: true` and
+  the `gcp_*` fields; use `gce_ccm.example.yml` as a template.  
+  `gcp_node_ssh_tag` must match the `${name_prefix}-ssh` tag on the VMs
+  (Terraform `node_ssh_tag` output / `local.ssh_tag` in `main.tf`).
+- `deploy-vm-google` — create a **dedicated service account** with
+  `loadBalancerAdmin` + `networkAdmin` + `viewer` roles, attach it to the VMs
+  with the `cloud-platform` access scope, and add a **firewall** that allows
+  health-check ranges `130.211.0.0/22` and `35.191.0.0/16` to **NodePorts
+  30000–32767** (see `enable_lb_healthcheck_firewall` in `variables.tf`).
+- `kubeadm` / `kubeadm join` — set **kubelet** `--cloud-provider=external` on
+  the control plane and every worker (see `kubeadm-config.yaml.j2` and
+  `kubeadm-join-config.yaml.j2` when the feature is enabled).
+- The `gcp_ccm` role — templates `/etc/kubernetes/gce.conf` and applies the
+  RBAC + `DaemonSet` for the cloud controller on the **control plane** (not
+  CNI: **Calico** is left in charge; CCM is run with
+  `--allocate-node-cidrs=false` and `--configure-cloud-routes=false` so it
+  does not program conflicting GCE routes).
+
+**Inventory names** (e.g. `demo-vm-1`) should match the GCE **instance** name
+so the provider can set `spec.providerID` on the `Node` object. Use
+`./scripts/gcp-ccm-preflight.sh` to compare `kubectl` and `gcloud` before a
+change.
+
+### 18.2. New cluster (recommended path)
+
+1. Ensure Terraform defines the LB firewall + node service account (`terraform apply`).
+2. Copy Terraform outputs into `group_vars/k8s_cluster.yml` (see example file).
+3. Run `ansible-playbook site.yml` from `multi-node-cluster/` with SSH access.
+
+### 18.3. Existing cluster (migration)
+
+Already-built clusters did **not** bootstrap with `--cloud-provider=external`.
+The Ansible templates alone do **not** rewrite a running kubelet.
+
+To migrate **without** rebuilding VMs:
+
+1. Complete Terraform IAM + firewall (same as above).
+2. Apply CCM manifests and `/etc/kubernetes/gce.conf` on the master (you can
+   run `ansible-playbook site.yml --limit masters` **after** filling
+   `group_vars/k8s_cluster.yml`).
+3. **Rolling kubelet update** on each node (workers first, control plane last):
+   `kubectl cordon` / `kubectl drain`, edit
+   `/var/lib/kubelet/kubeadm-flags.env` and append `--cloud-provider=external`
+   to `KUBELET_KUBEADM_ARGS`, `systemctl restart kubelet`, confirm
+   `kubectl get node <name> -o jsonpath='{.spec.providerID}'` shows a `gce://`
+   URI, then `kubectl uncordon`.
+4. Install or verify the **VM service account** has an access scope that
+   allows Compute API usage (`cloud-platform` as in Terraform); otherwise CCM
+   cannot create forwarding rules.
+
+### 18.4. Verify and teardown
+
+- `./scripts/gcp-ccm-verify.sh` — DaemonSet status and node `providerID`.
+- Deploy a test `Deployment` + `Service` `type=LoadBalancer` and wait for an
+  external IP.
+- **Before removing CCM**, delete every `LoadBalancer` `Service` so GCP does
+  not leak forwarding rules / backends.

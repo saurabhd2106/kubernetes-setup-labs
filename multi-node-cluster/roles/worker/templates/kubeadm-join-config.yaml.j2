@@ -1,0 +1,19 @@
+{# Declarative join config for kubeadm v1beta4 (GCP CCM: kubelet cloud-provider=external). #}
+{% set _m = hostvars[groups['masters'][0]] %}
+---
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: JoinConfiguration
+discovery:
+  bootstrapToken:
+    apiServerEndpoint: {{ _m.kubeadm_join_api_server }}
+    token: {{ _m.kubeadm_join_token }}
+    caCertHashes:
+      - {{ _m.kubeadm_join_ca_hash }}
+nodeRegistration:
+  name: {{ inventory_hostname }}
+  criSocket: unix:///run/containerd/containerd.sock
+  kubeletExtraArgs:
+    - name: cloud-provider
+      value: external
+    - name: node-ip
+      value: "{{ ansible_host }}"

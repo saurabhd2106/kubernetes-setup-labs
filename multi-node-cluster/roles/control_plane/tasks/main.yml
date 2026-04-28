@@ -132,6 +132,25 @@
   ansible.builtin.set_fact:
     kubeadm_join_command: "{{ join_cmd.stdout | trim }}"
 
+- name: "Parse kubeadm join command for GCP structured join config"
+  ansible.builtin.set_fact:
+    kubeadm_join_api_server: "{{ (join_cmd.stdout | trim).split()[2] }}"
+    kubeadm_join_token: "{{ (join_cmd.stdout | trim).split()[4] }}"
+    kubeadm_join_ca_hash: "{{ (join_cmd.stdout | trim).split()[6] }}"
+  when: enable_gcp_cloud_controller | default(false) | bool
+
+- name: "Validate parsed kubeadm join fields (GCP CCM)"
+  ansible.builtin.assert:
+    that:
+      - kubeadm_join_api_server is defined
+      - kubeadm_join_token is defined
+      - kubeadm_join_ca_hash is defined
+      - kubeadm_join_ca_hash is match('^sha256:[a-f0-9]+$')
+    fail_msg: >-
+      Could not parse kubeadm token create output.
+      Expected: kubeadm join <host:6443> --token ... --discovery-token-ca-cert-hash sha256:...
+  when: enable_gcp_cloud_controller | default(false) | bool
+
 # ---------------------------------------------------------------------
 # Fetch admin.conf to the controller so the operator can use kubectl
 # from outside the cluster.

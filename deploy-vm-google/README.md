@@ -4,8 +4,8 @@ Simple Terraform setup that creates a VPC, a subnet, basic firewall rules, and a
 
 ## Files
 
-- `main.tf` – provider, VPC, subnet, firewall rules, VMs, optional auto-generated SSH keypair
-- `variables.tf` – configurable inputs (with validation)
+- `main.tf` – provider, VPC, subnet, firewall rules, VMs, optional auto-generated SSH keypair; optional Kubernetes LB helper firewall + dedicated node service account for [`kubernetes/cloud-provider-gcp`](https://github.com/kubernetes/cloud-provider-gcp)
+- `variables.tf` – configurable inputs (including `enable_lb_healthcheck_firewall`, `attach_kubernetes_service_account`)
 - `outputs.tf` – VM names, IPs, SSH user/key/path, ready-to-run SSH commands
 - `terraform.tfvars.example` – example variable values
 - `.gitignore` – excludes state, secrets, generated keys, and tfvars

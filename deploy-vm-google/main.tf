@@ -88,6 +88,49 @@ resource "google_compute_firewall" "ssh" {
   source_ranges = var.ssh_source_ranges
 }
 
+# Google Cloud Load Balancer health checks probe NodePort backends from these ranges.
+# See: https://cloud.google.com/load-balancing/docs/health-checks#firewall_rules
+resource "google_compute_firewall" "lb_healthchecks" {
+  count   = var.enable_lb_healthcheck_firewall ? 1 : 0
+  name    = "${var.name_prefix}-allow-lb-healthchecks"
+  network = google_compute_network.vpc.name
+
+  direction = "INGRESS"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["30000-32767"]
+  }
+
+  source_ranges = ["130.211.0.0/22", "35.191.0.0/16"]
+  target_tags   = local.vm_tags
+}
+
+locals {
+  k8s_node_sa_roles = [
+    "roles/compute.loadBalancerAdmin",
+    "roles/compute.networkAdmin",
+    "roles/compute.viewer",
+  ]
+  # Service account ID must be 6-30 chars; keep suffix "-k8s-node" (9 chars).
+  k8s_node_account_id = "${substr(var.name_prefix, 0, 21)}-k8s-node"
+}
+
+resource "google_service_account" "k8s_nodes" {
+  count        = var.attach_kubernetes_service_account ? 1 : 0
+  account_id   = local.k8s_node_account_id
+  display_name = "Kubernetes nodes (CCM / external LoadBalancer)"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "k8s_nodes" {
+  for_each = var.attach_kubernetes_service_account ? toset(local.k8s_node_sa_roles) : toset([])
+
+  project = var.project_id
+  role    = each.value
+  member  = "serviceAccount:${google_service_account.k8s_nodes[0].email}"
+}
+
 resource "google_compute_instance" "vm" {
   count        = var.vm_count
   name         = "${var.name_prefix}-vm-${count.index + 1}"
@@ -124,4 +167,12 @@ resource "google_compute_instance" "vm" {
 
   labels = var.labels
   tags   = local.vm_tags
+
+  dynamic "service_account" {
+    for_each = var.attach_kubernetes_service_account ? [1] : []
+    content {
+      email  = google_service_account.k8s_nodes[0].email
+      scopes = ["cloud-platform"]
+    }
+  }
 }

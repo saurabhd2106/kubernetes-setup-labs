@@ -111,3 +111,15 @@ variable "labels" {
   type        = map(string)
   default     = {}
 }
+
+variable "enable_lb_healthcheck_firewall" {
+  description = "Allow GCP load balancer health check ranges (130.211.0.0/22, 35.191.0.0/16) to reach NodePorts 30000-32767 on tagged instances. Required for Service type=LoadBalancer with GCP CCM."
+  type        = bool
+  default     = true
+}
+
+variable "attach_kubernetes_service_account" {
+  description = "Create a dedicated GCP service account with LB/network IAM roles and attach it to VMs with cloud-platform scope (recommended for kubernetes/cloud-provider-gcp)."
+  type        = bool
+  default     = true
+}

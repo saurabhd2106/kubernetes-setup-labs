@@ -1,0 +1,17 @@
+# =============================================================================
+# Settings for all cluster nodes (see [k8s_cluster:children] in inventory).
+# For GCE: set enable_gcp_cloud_controller: true and the gcp_* fields from
+#   cd deploy-vm-google && terraform output
+# Or start from gce_ccm.example.yml in this directory and copy the block here.
+# =============================================================================
+enable_gcp_cloud_controller: false
+
+# Required when enable_gcp_cloud_controller is true (match Terraform output):
+gcp_project_id: ""
+gcp_network_name: ""
+gcp_subnetwork_name: ""
+gcp_zone: ""
+gcp_node_ssh_tag: ""
+
+# Pin to a tag that exists on registry.k8s.io (verify with `docker pull`).
+gcp_ccm_image: "registry.k8s.io/cloud-provider-gcp/cloud-controller-manager:v33.1.1"

@@ -1,0 +1,21 @@
+project_id = "my-gcp-project"
+
+region      = "us-central1"
+zone        = "us-central1-a"
+name_prefix = "gke-demo"
+
+# Leave empty for release channel defaults; otherwise set an explicit master version string.
+kubernetes_version = ""
+release_channel      = "REGULAR"
+
+node_count   = 2
+machine_type = "e2-medium"
+disk_size_gb = 50
+disk_type    = "pd-standard"
+
+tags = []
+
+labels = {
+  env     = "dev"
+  managed = "terraform"
+}

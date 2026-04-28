@@ -40,6 +40,16 @@ For a beginner-friendly walkthrough of *why* every step exists, read
 
 ---
 
+## Google Cloud LoadBalancer (optional)
+
+When nodes run on **GCE** (e.g. from `deploy-vm-google`), enable the GCP Cloud
+Controller Manager in `group_vars/k8s_cluster.yml` (`enable_gcp_cloud_controller:
+true` and `gcp_*` fields from `terraform output`). See [GUIDE.md §18](GUIDE.md)
+and `group_vars/gce_ccm.example.yml`. Terraform should apply the LB health-check
+firewall and node service account (`attach_kubernetes_service_account`, default `true`).
+
+---
+
 ## Quickstart
 
 ```bash
