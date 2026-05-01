@@ -16,6 +16,31 @@
     path: /etc/kubernetes/admin.conf
   register: admin_conf
 
+- name: "Read existing apiserver endpoint from admin.conf (if present)"
+  ansible.builtin.shell: |
+    set -o pipefail
+    awk '/^[[:space:]]*server:[[:space:]]*https:\/\// {print $2; exit}' /etc/kubernetes/admin.conf
+  args:
+    executable: /bin/bash
+  register: existing_admin_conf_server
+  changed_when: false
+  when: admin_conf.stat.exists
+
+- name: "Fail fast when existing admin.conf endpoint differs from inventory"
+  ansible.builtin.assert:
+    that:
+      - existing_admin_conf_server.stdout | trim == ('https://' ~ control_plane_endpoint)
+    fail_msg: >-
+      Existing /etc/kubernetes/admin.conf points to {{
+      existing_admin_conf_server.stdout | trim | default('unknown') }}, but this
+      inventory expects https://{{ control_plane_endpoint }}.
+      This usually means the control plane was previously bootstrapped with a
+      different master IP. Rebuild the cluster state with:
+        ansible-playbook reset.yml
+      Then run:
+        ansible-playbook site.yml
+  when: admin_conf.stat.exists
+
 - name: "Render kubeadm config"
   ansible.builtin.template:
     src: kubeadm-config.yaml.j2
