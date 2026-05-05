@@ -118,6 +118,18 @@ variable "enable_lb_healthcheck_firewall" {
   default     = true
 }
 
+variable "enable_kube_apiserver_firewall" {
+  description = "Allow inbound TCP/6443 (Kubernetes API server) to the cluster VMs from kube_apiserver_source_ranges."
+  type        = bool
+  default     = true
+}
+
+variable "kube_apiserver_source_ranges" {
+  description = "Source CIDR ranges allowed to reach the Kubernetes API server on port 6443. Restrict for production."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
 variable "attach_kubernetes_service_account" {
   description = "Create a dedicated GCP service account with LB/network IAM roles and attach it to VMs with cloud-platform scope (recommended for kubernetes/cloud-provider-gcp)."
   type        = bool

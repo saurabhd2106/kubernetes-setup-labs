@@ -10,6 +10,8 @@ subnet_cidr  = "10.10.0.0/24"
 
 assign_public_ip  = true
 ssh_source_ranges = ["0.0.0.0/0"]
+enable_kube_apiserver_firewall = true
+kube_apiserver_source_ranges   = ["0.0.0.0/0"]
 
 # SSH key options
 # 1) Auto-generate (default): leave ssh_public_key empty.

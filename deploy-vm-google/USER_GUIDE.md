@@ -54,9 +54,10 @@ The "what to build" file. It defines:
 - An optional SSH keypair (`tls_private_key` + `local_sensitive_file`) generated only when you don't supply your own key.
 - A VPC (`google_compute_network`) – your isolated network.
 - A subnet (`google_compute_subnetwork`) – an IP range inside the VPC where the VMs live.
-- Two firewall rules:
+- Three firewall rules:
   - `allow-internal`: VMs in the subnet can talk to each other freely.
   - `allow-ssh`: port 22 is open from `ssh_source_ranges`, but only to VMs that carry the `<name_prefix>-ssh` tag (set automatically).
+  - `allow-kube-apiserver`: port 6443 is open from `kube_apiserver_source_ranges`, also scoped to the `<name_prefix>-ssh` tag.
 - The VMs themselves (`google_compute_instance` with `count = var.vm_count`). Each VM:
   - Boots from `var.image` with a `var.disk_size_gb` disk.
   - Joins the same VPC/subnet.
@@ -80,6 +81,8 @@ The "knobs you can turn" file. Every input has a description, a sensible default
 | `subnet_cidr` | Private IP range | Avoid clashes with other networks |
 | `assign_public_ip` | Public IP per VM | Set false if you only want internal access |
 | `ssh_source_ranges` | Who can SSH | Restrict to your IP for safety |
+| `enable_kube_apiserver_firewall` | Enable firewall rule for Kubernetes API port 6443 | Keep true unless API access is handled differently |
+| `kube_apiserver_source_ranges` | Who can reach Kubernetes API port 6443 | Restrict to trusted IP ranges for safety |
 | `ssh_user` | SSH username | Default `ubuntu` matches the default image; if you change `image`, use the username that image expects |
 | `ssh_public_key` | Your SSH public key | Leave empty to auto-generate |
 | `tags` | Extra network tags | For your own firewall scoping |
@@ -94,6 +97,8 @@ The "what you get back" file. After `terraform apply`, run `terraform output` to
 - `ssh_user`, `ssh_private_key_path` – how to log in.
 - `ssh_public_key` – the key injected into the VMs (marked sensitive).
 - `ssh_commands` – ready-to-run `ssh ...` commands, one per VM.
+
+When you leave `ssh_public_key` empty, Terraform generates and stores a keypair in state. Re-running `terraform apply` keeps the same generated key unless you intentionally change key mode (for example by setting a custom `ssh_public_key`) or destroy state/resources.
 
 ### `terraform.tfvars.example`
 

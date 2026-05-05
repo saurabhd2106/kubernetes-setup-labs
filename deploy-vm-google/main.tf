@@ -35,6 +35,10 @@ resource "tls_private_key" "ssh" {
   count     = local.generate_key ? 1 : 0
   algorithm = "RSA"
   rsa_bits  = 4096
+
+  lifecycle {
+    ignore_changes = [algorithm, rsa_bits]
+  }
 }
 
 resource "local_sensitive_file" "ssh_private_key" {
@@ -42,6 +46,10 @@ resource "local_sensitive_file" "ssh_private_key" {
   filename        = "${path.module}/${var.name_prefix}-key.pem"
   content         = tls_private_key.ssh[0].private_key_pem
   file_permission = "0600"
+
+  lifecycle {
+    ignore_changes = [content, file_permission]
+  }
 }
 
 resource "google_compute_network" "vpc" {
@@ -86,6 +94,20 @@ resource "google_compute_firewall" "ssh" {
   }
 
   source_ranges = var.ssh_source_ranges
+}
+
+resource "google_compute_firewall" "kube_apiserver" {
+  count       = var.enable_kube_apiserver_firewall ? 1 : 0
+  name        = "${var.name_prefix}-allow-kube-apiserver"
+  network     = google_compute_network.vpc.name
+  target_tags = [local.ssh_tag]
+
+  allow {
+    protocol = "tcp"
+    ports    = ["6443"]
+  }
+
+  source_ranges = var.kube_apiserver_source_ranges
 }
 
 # Google Cloud Load Balancer health checks probe NodePort backends from these ranges.
