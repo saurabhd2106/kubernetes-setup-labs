@@ -6,7 +6,8 @@ vm_count     = 3
 machine_type = "e2-medium"
 image        = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
 disk_size_gb = 20
-subnet_cidr  = "10.10.0.0/24"
+subnet_cidr      = "10.10.0.0/24"
+pod_network_cidr = "192.168.0.0/16"
 
 assign_public_ip  = true
 ssh_source_ranges = ["0.0.0.0/0"]

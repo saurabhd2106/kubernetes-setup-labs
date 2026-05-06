@@ -55,7 +55,7 @@ The "what to build" file. It defines:
 - A VPC (`google_compute_network`) – your isolated network.
 - A subnet (`google_compute_subnetwork`) – an IP range inside the VPC where the VMs live.
 - Three firewall rules:
-  - `allow-internal`: VMs in the subnet can talk to each other freely.
+  - `allow-internal`: VMs in the subnet (and sources in `pod_network_cidr`) can talk to each other freely; `ipip` (protocol 4) is allowed so Calico IP-in-IP overlay traffic works across nodes.
   - `allow-ssh`: port 22 is open from `ssh_source_ranges`, but only to VMs that carry the `<name_prefix>-ssh` tag (set automatically).
   - `allow-kube-apiserver`: port 6443 is open from `kube_apiserver_source_ranges`, also scoped to the `<name_prefix>-ssh` tag.
 - The VMs themselves (`google_compute_instance` with `count = var.vm_count`). Each VM:
@@ -79,6 +79,7 @@ The "knobs you can turn" file. Every input has a description, a sensible default
 | `image` | OS image | Default Ubuntu 24.04 LTS amd64; override for another OS or arm64 (`ubuntu-2404-lts-arm64` on T2A) |
 | `disk_size_gb` | Boot disk size | Larger if you need more storage |
 | `subnet_cidr` | Private IP range | Avoid clashes with other networks |
+| `pod_network_cidr` | Pod CIDR used by the cluster CNI; allowed in the internal firewall | Keep in sync with `pod_network_cidr` in `multi-node-cluster/group_vars/all.yml` |
 | `assign_public_ip` | Public IP per VM | Set false if you only want internal access |
 | `ssh_source_ranges` | Who can SSH | Restrict to your IP for safety |
 | `enable_kube_apiserver_firewall` | Enable firewall rule for Kubernetes API port 6443 | Keep true unless API access is handled differently |

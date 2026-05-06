@@ -42,6 +42,17 @@ variable "subnet_cidr" {
   }
 }
 
+variable "pod_network_cidr" {
+  description = "Pod network CIDR used by the in-cluster CNI (Calico). Allowed as a source in the internal firewall so non-encapsulated pod traffic isn't dropped. Must match the cluster's pod CIDR (see multi-node-cluster/group_vars/all.yml)."
+  type        = string
+  default     = "192.168.0.0/16"
+
+  validation {
+    condition     = can(cidrnetmask(var.pod_network_cidr))
+    error_message = "pod_network_cidr must be a valid CIDR block (e.g. 192.168.0.0/16)."
+  }
+}
+
 variable "vm_count" {
   description = "Number of VMs to create (all in the same VPC/subnet)."
   type        = number

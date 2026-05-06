@@ -80,7 +80,11 @@ resource "google_compute_firewall" "internal" {
     protocol = "icmp"
   }
 
-  source_ranges = [var.subnet_cidr]
+  allow {
+    protocol = "ipip"
+  }
+
+  source_ranges = distinct([var.subnet_cidr, var.pod_network_cidr])
 }
 
 resource "google_compute_firewall" "ssh" {
